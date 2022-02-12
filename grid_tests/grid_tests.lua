@@ -1,5 +1,5 @@
-include 'lib/algebra'
 include 'lib/notes'
+include 'lib/algebra'
 lattice = require("lattice")
 
 g = grid.connect()
