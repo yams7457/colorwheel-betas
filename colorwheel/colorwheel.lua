@@ -55,6 +55,9 @@ function init()
   for x = 1, 4 do
     tracks[x].gate = colorwheel_lattice:new_pattern{
       action = function(t) trait_tick("gate", x, tracks[x].gate, t)
+        if x == 1 then
+          print(t / 12)
+        end
         if change_preset >= 1 then
           params:set('load_pset', change_preset)
           change_preset = 0
@@ -64,23 +67,23 @@ function init()
       division = params:get("gate div " ..x) * params:get("global clock div") / 32
     }
     tracks[x].interval = colorwheel_lattice:new_pattern{
-      action = function() trait_tick("interval", x, tracks[x].interval) end,
+      action = function(t) trait_tick("interval", x, tracks[x].interval, t) end,
       division = params:get("interval div " ..x) * params:get("global clock div") / 32
     }
    tracks[x].octave = colorwheel_lattice:new_pattern{
-      action = function() trait_tick("octave", x, tracks[x].octave) end,
+      action = function(t) trait_tick("octave", x, tracks[x].octave, t) end,
       division = params:get("octave div " ..x) * params:get("global clock div") / 32
     }
     tracks[x].velocity = colorwheel_lattice:new_pattern{
-      action = function() trait_tick("velocity", x, tracks[x].velocity) end,
+      action = function(t) trait_tick("velocity", x, tracks[x].velocity, t) end,
       division = params:get("velocity div " ..x) * params:get("global clock div") / 32
     }
     tracks[x].length = colorwheel_lattice:new_pattern{
-      action = function() trait_tick("length", x, tracks[x].length) end,
+      action = function(t) trait_tick("length", x, tracks[x].length, t) end,
       division = params:get('length div ' ..x) * params:get("global clock div") / 32
     }
     tracks[x].alt = colorwheel_lattice:new_pattern{
-      action = function() trait_tick("alt note", x, tracks[x].alt) end,
+      action = function(t) trait_tick("alt note", x, tracks[x].alt, t) end,
       division = params:get('alt note div ' ..x) * params:get("global clock div") / 32
     }
 
@@ -255,7 +258,7 @@ function grid_redraw()
       set_up_the_prob_page(trait_dummies[navigation_bar.displayed_trait], navigation_bar.displayed_track)
     end
 
-    if momentary_time and navigation_bar.displayed_trait == 1 then
+    if momentary_time then
       set_up_the_gate_clock_page()
     end
 
@@ -332,9 +335,9 @@ function g.key(x,y,z)
             momentary_loop = false
           end
         elseif x == 13 then
-          if z == 1 then
+          if z == 1 and momentary_time == false then
             momentary_time = true
-          else
+          elseif z == 1 and momentary_time == true then
             momentary_time = false
           end
         elseif x == 14 then
@@ -616,7 +619,7 @@ function set_up_the_live_page(x,y,z)
 end
 
 function set_up_the_gate_page()
-if not momentary_time and not momentary_prob then -- if no mod keys are pressed
+if not momentary_prob and not momentary_time then -- if no mod keys are pressed
     for y = 1,4,1 do
       for x = 1,16,1 do
         if x >= params:get('gate sequence start ' ..y) and x <= params:get('gate sequence end ' ..y) then
@@ -693,13 +696,12 @@ end
 
 function set_up_the_interval_page(track)
     build_the_interval_display_table(track)
-  if not momentary_prob then -- if no mod keys are pressed
+  if not momentary_prob and not momentary_time then -- if no mod keys are pressed
     for x = 1,16,1 do
       g:led(x, 6 - display_interval[track][x], 2)
     end
     for x = params:get('interval sequence start ' ..track), params:get('interval sequence end ' ..track),1 do
       g:led(x, 6-display_interval[track][x], 15)
-    end
     end
     for x = params:get('interval sequence start ' ..track), params:get('interval sequence end ' ..track) do
       g:led(x, 6, 4)
@@ -710,6 +712,8 @@ function set_up_the_interval_page(track)
     g:led(params:get('current interval step ' ..track) - 1, 6, 15)
     end
     g:led(params:get('interval div ' ..track), 7, 4)
+        end
+
 end
 
 
@@ -739,7 +743,7 @@ function build_the_interval_display_table(track)
 end
 
 function set_up_the_octave_page(track)
-  if not momentary_prob then -- if no mod keys are pressed
+  if not momentary_prob and not momentary_time then -- if no mod keys are pressed
     for x = 1,6 do
       g:led(x, 1, 6)
     end
@@ -750,7 +754,7 @@ function set_up_the_octave_page(track)
     for x = params:get('octave sequence start ' ..track), params:get('octave sequence end ' ..track),1 do
       g:led(x, 6-params:get('octave ' ..track.. ' ' ..x), 15)
     end
-    end
+
     for x = params:get('octave sequence start ' ..track), params:get('octave sequence end ' ..track) do
       g:led(x, 6, 4)
     end
@@ -758,11 +762,13 @@ function set_up_the_octave_page(track)
       g:led(params:get('octave sequence end ' ..track), 6, 15)
     else
     g:led(params:get('current octave step ' ..track) - 1, 6, 15)
-    end    g:led(params:get('octave div ' ..track), 7, 4)
+        end    g:led(params:get('octave div ' ..track), 7, 4)
+      end
+
 end
 
 function set_up_the_velocity_page(track)
-if not momentary_prob then -- if no mod keys are pressed
+if not momentary_prob and not momentary_time then -- if no mod keys are pressed
     local k = {}
     for x = 1,16,1 do
       k[x] = params:get('velocity ' ..track.. ' ' ..x)
@@ -771,7 +777,6 @@ if not momentary_prob then -- if no mod keys are pressed
     for x = params:get('velocity sequence start ' ..track), params:get('velocity sequence end ' ..track),1 do
       g:led(x, 6-k[x], 15)
     end
-    end
     for x = params:get('velocity sequence start ' ..track), params:get('velocity sequence end ' ..track) do
       g:led(x, 6, 4)
     end
@@ -779,11 +784,13 @@ if not momentary_prob then -- if no mod keys are pressed
       g:led(params:get('velocity sequence end ' ..track), 6, 15)
     else
     g:led(params:get('current velocity step ' ..track) - 1, 6, 15)
-    end    g:led(params:get('velocity div ' ..track), 7, 4)
+        end    g:led(params:get('velocity div ' ..track), 7, 4)
+      end
+
 end
 
 function set_up_the_length_page(track)
-  if not momentary_prob then -- if no mod keys are pressed
+  if not momentary_prob and not momentary_time then -- if no mod keys are pressed
    local k = {}
     for x = 1,16,1 do
       k[x] = params:get('length ' ..track.. ' ' ..x)
@@ -792,7 +799,6 @@ function set_up_the_length_page(track)
     for x = params:get('length sequence start ' ..track), params:get('length sequence end ' ..track),1 do
       g:led(x, 6-k[x], 15)
     end
-    end
     for x = params:get('length sequence start ' ..track), params:get('length sequence end ' ..track) do
       g:led(x, 6, 4)
     end
@@ -800,11 +806,13 @@ function set_up_the_length_page(track)
       g:led(params:get('length sequence end ' ..track), 6, 15)
     else
     g:led(params:get('current length step ' ..track) - 1, 6, 15)
-    end    g:led(params:get('length div ' ..track), 7, 4)
+        end    g:led(params:get('length div ' ..track), 7, 4)
+      end
+
 end
 
 function set_up_the_alt_note_page(track)
-    if not momentary_prob then -- if no mod keys are pressed
+    if not momentary_prob and not momentary_time then -- if no mod keys are pressed
       for x = 1,16,1 do
         g:led(x, 5 - params:get('alt note ' ..track.. ' ' ..x), 15)
       end
@@ -828,8 +836,10 @@ function set_up_the_prob_page(trait, track)
 end
 
 function set_up_the_gate_clock_page()
-  for y = 1,4 do
-    g:led(params:get('gate div ' ..y), y, 8)
+  if not momentary_prob then 
+    for y = 1,4 do
+      g:led(params:get('gate div ' ..y), y, 8)
+    end
   end
 end
 
@@ -850,6 +860,7 @@ end
 function change_interval(x,y,z,track)
   if z == 1 then
     params:set(('interval ' ..track.. ' ' ..x), get_key_for_value(interval_display_table_unsorted[track], interval_display_table[track][6 - y]))
+    params:set(('gate ' ..track.. ' ' ..x), 1)
   end
 end
 
@@ -892,7 +903,7 @@ end
 
 
 function change_start_point(x,y,z,trait,track)
-   if z == 1 then
+   if z == 1 and trait ~= 3 then
      range[trait][track].held = range[trait][track].held + 1
      local difference = range[trait][track][2] - range[trait][track][1]
      local original = {range[trait][track][1], range[trait][track][2]}

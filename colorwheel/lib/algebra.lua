@@ -206,7 +206,9 @@ function trait_tick(a_trait, track, source_lattice, t)
             end
     params:set("current " .. a_trait .. " step " .. track, ((params:get("current " .. a_trait .. " step " .. track) - params:get(a_trait .. " sequence start " .. track)) + 1) % (params:get(a_trait .. " sequence end " .. track) - params:get(a_trait .. " sequence start " .. track) + 1) + params:get(a_trait .. " sequence start " .. track))
     grid_dirty = true
-    source_lattice:set_division(params:get(a_trait..  ' div ' ..track) * params:get("global clock div") / 32)
+    if t % (params:get(a_trait.. ' div ' ..track) * params:get("global clock div")) == 0 then
+      source_lattice:set_division(params:get(a_trait..  ' div ' ..track) * params:get("global clock div") / 32)
+    end
 end
 
 function determine_traits(track, flourish)
