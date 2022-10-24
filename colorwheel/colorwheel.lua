@@ -8,7 +8,6 @@
 -- if you get the spins
 
 include 'lib/notes'
-include 'lib/mididelay'
 include 'lib/algebra'
 lattice = require("lattice")
 include 'lib/pset_sequencer'
