@@ -5,13 +5,15 @@
 --
 -- or stop it spinning
 --
--- for if you get the spins
+-- if you get the spins
 
 include 'lib/notes'
+include 'lib/mididelay'
 include 'lib/algebra'
 lattice = require("lattice")
 include 'lib/pset_sequencer'
 
+transposition_center = 0
 write_preset = 0
 change_preset = 0
 
@@ -55,9 +57,6 @@ function init()
   for x = 1, 4 do
     tracks[x].gate = colorwheel_lattice:new_pattern{
       action = function(t) trait_tick("gate", x, tracks[x].gate, t)
-        if x == 1 then
-          print(t / 12)
-        end
         if change_preset >= 1 then
           params:set('load_pset', change_preset)
           change_preset = 0
@@ -89,6 +88,13 @@ function init()
 
 
   end
+  
+  midi_delay_clock = colorwheel_lattice:new_pattern{
+    action = function(t) delay_tick() end,
+    division = params:get("global clock div") / 8
+    
+  }
+  
   -- start the lattice
   colorwheel_lattice:start()
 
@@ -284,18 +290,23 @@ function grid_redraw()
 end
 
 function randomize()
-  for i = 1,4,1 do
-    for key,value in pairs(note_traits.current) do
-      params:set(key.. " sequence end " ..i, math.random(1,16))
-    end
+  transposition_center = math.random(-2,2)
+  -- for i = 1,4,1 do
+  --   for key,value in pairs(note_traits.current) do
+  --     params:set(key.. " sequence end " ..i, math.random(1,16))
+  --     params:set(key.. " div " ..i, math.random(1,5))
+  --   end
 
   for j = 1,16,1 do
       params:set("gate " ..i .." "..j, math.random(0,1))
       params:set("interval " ..i .." "..j, math.random (1, 5))
---      params:set("alt note " ..i .." " ..j, math.random(0,4))
---      params:set("octave " ..i .." "..j, math.random(1,2))
---      params:set("velocity " ..i .." "..j, math.random(2, 5))
---      params:set("length " ..i .." "..j, math.random(1,5))
+      params:set("alt note " ..i .." " ..j, math.random(0,4))
+      params:set("octave " ..i .." "..j, math.random(1,2))
+      params:set("velocity " ..i .." "..j, math.random(2, 5))
+      -- params:set("length " ..i .." "..j, math.random(1,5))
+      -- params:set("carving " ..i, math.random(1,4))
+      -- params:set("offset " ..i, params:get("offset " ..i) + math.random(-1,1))
+      -- params:set("transposition " ..i, transposition_center + math.random(-1,1))
   end
       params:set("gate " ..i .." 1", 1)
 
@@ -308,9 +319,33 @@ function key(n,z)
     print('randomizing!')
   end
   if n == 3 and z == 1 then
-    colorwheel_lattice:toggle()
+    if colorwheel_lattice.enabled then
+      clock.transport.stop()
+    else
+      clock.transport.start()
+    end
   end
   grid_dirty = true
+end
+
+function clock.transport.stop()
+  colorwheel_lattice:stop()
+end
+
+
+function clock.transport.start()
+  colorwheel_lattice:start()
+end
+
+
+position = clock.get_tempo()
+
+function enc(n,d)
+  if n == 2 then
+    position = util.clamp(position + d,1,300)
+    params:set("clock_tempo",position)
+    print("clock tempo is now " ..clock.get_tempo())
+  end
 end
 
 function g.key(x,y,z)
@@ -405,8 +440,12 @@ function g.key(x,y,z)
     end
 
   elseif momentary_time and navigation_bar.displayed_trait == 1 then
-    change_gate_clock_div(x, y)
-
+    if y <= 4 then
+      change_gate_clock_div(x, y)
+    end
+    if y == 6 then
+      params:set("output slot " ..math.floor((x - 1) / 4) + 1, (x - math.floor((x - 1) / 4) * 4) % 5)
+    end
   elseif momentary_prob then
     change_the_step_probability(x, y, z, trait_dummies[navigation_bar.displayed_trait], navigation_bar.displayed_track)
   end
@@ -446,8 +485,10 @@ end -- all seq stuff should be above this line
 
     if y == 1 then
       for i = 1,5 do
-        for j = 1,4 do
-        change_start_point(x,y,z,i,j)
+        if i ~= 3 then
+            for j = 1,4 do
+              change_start_point(x,y,z,i,j)
+            end
         end
       end
     end
@@ -840,6 +881,21 @@ function set_up_the_gate_clock_page()
     for y = 1,4 do
       g:led(params:get('gate div ' ..y), y, 8)
     end
+      for x = 1,4 do
+        g:led(x,6,6)
+      end
+      for x = 5,8 do
+        g:led(x,6, 2)
+      end
+      for x = 9,12 do
+        g:led(x,6,6)
+      end
+      for x = 13,16 do
+        g:led(x,6, 2)
+      end  
+    for output_track = 1,4 do
+      g:led((output_track - 1) * 4 + params:get("output slot " ..output_track), 6, 12)
+    end
   end
 end
 
@@ -903,7 +959,7 @@ end
 
 
 function change_start_point(x,y,z,trait,track)
-   if z == 1 and trait ~= 3 then
+   if z == 1 then
      range[trait][track].held = range[trait][track].held + 1
      local difference = range[trait][track][2] - range[trait][track][1]
      local original = {range[trait][track][1], range[trait][track][2]}
